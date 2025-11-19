@@ -83,18 +83,28 @@ class Coin {
     fun render(renderer: ShapeRenderer, ppm: Float) {
         body?.let { b ->
             val pos = b.position
+            val x = pos.x * ppm
+            val y = pos.y * ppm
+            val radius = COIN_RADIUS * ppm
+
+            // Draw shadow for depth (offset, semi-transparent black)
+            renderer.color = Color(0f, 0f, 0f, 0.3f)
+            renderer.circle(x + 2f, y - 2f, radius, 18)
+
+            // Draw base coin
             renderer.color = color
+            renderer.circle(x, y, radius, 20)
 
-            // Draw coin as filled circle
-            renderer.circle(pos.x * ppm, pos.y * ppm, COIN_RADIUS * ppm, 20)
-
-            // Draw edge for 3D effect
+            // Draw darker edge ring for 3D effect
             renderer.color = Color(color.r * 0.7f, color.g * 0.7f, color.b * 0.7f, 1f)
-            renderer.circle(pos.x * ppm, pos.y * ppm, COIN_RADIUS * ppm, 20)
+            renderer.circle(x, y, radius * 0.85f, 18)
 
-            // Draw center highlight
-            renderer.color = Color(color.r * 1.2f, color.g * 1.2f, color.b * 1.2f, 1f)
-            renderer.circle(pos.x * ppm, pos.y * ppm, COIN_RADIUS * 0.6f * ppm, 12)
+            // Draw center highlight (brighter, smaller)
+            val highlightR = Math.min(color.r * 1.4f, 1f)
+            val highlightG = Math.min(color.g * 1.4f, 1f)
+            val highlightB = Math.min(color.b * 1.4f, 1f)
+            renderer.color = Color(highlightR, highlightG, highlightB, 1f)
+            renderer.circle(x, y, radius * 0.5f, 12)
         }
     }
 

@@ -44,6 +44,9 @@ class CollisionListener(private val physicsWorld: PhysicsWorld) : ContactListene
 
     override fun postSolve(contact: Contact, impulse: ContactImpulse) {
         // Handle post-collision effects (sound, particles)
+        // Safety check: ensure impulse array has elements
+        if (impulse.normalImpulses.size == 0) return
+
         val impulseValue = impulse.normalImpulses[0]
         if (impulseValue > 0.5f) {
             // Play collision sound for significant impacts
