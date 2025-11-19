@@ -1,6 +1,7 @@
 package com.coinpusher.game.screens
 
 import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.Input
 import com.badlogic.gdx.Screen
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.GL20
@@ -11,12 +12,16 @@ import com.badlogic.gdx.input.GestureDetector.GestureListener
 import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.utils.viewport.FitViewport
 import com.coinpusher.game.CoinPusherGame
+import com.coinpusher.game.audio.SoundManager
+import com.coinpusher.game.data.GameData
+import com.coinpusher.game.effects.ParticleManager
+import com.coinpusher.game.effects.ScreenEffects
 import com.coinpusher.game.entities.Coin
 import com.coinpusher.game.entities.GameBounds
 import com.coinpusher.game.entities.Platform
 import com.coinpusher.game.physics.PhysicsWorld
 import com.coinpusher.game.systems.CoinPool
-import kotlin.math.min
+import com.coinpusher.game.ui.GameHUD
 
 /**
  * Main game screen where the coin pusher action happens
@@ -30,20 +35,45 @@ class GameScreen(private val game: CoinPusherGame) : Screen, GestureListener {
     private val platform: Platform
     private val gameBounds: GameBounds
 
+    // New systems
+    private val soundManager: SoundManager
+    private val particleManager: ParticleManager
+    private val screenEffects: ScreenEffects
+    private val hud: GameHUD
+    private val gameData: GameData
+
     private var score = 0
-    private var coinCount = 100
+    private var sessionStartTime = 0L
     private var lastCoinSpawn = 0f
-    private val coinSpawnDelay = 0.5f // Seconds between auto-spawns
+    private val coinSpawnDelay = 0.5f
+    private var lastCollectedValue = 0
 
     init {
         // Setup camera
         camera = OrthographicCamera()
         camera.setToOrtho(false, CoinPusherGame.GAME_WIDTH, CoinPusherGame.GAME_HEIGHT)
-
         viewport = FitViewport(CoinPusherGame.GAME_WIDTH, CoinPusherGame.GAME_HEIGHT, camera)
+
+        // Initialize systems
+        gameData = GameData.getInstance()
+        soundManager = SoundManager()
+        particleManager = ParticleManager()
+        screenEffects = ScreenEffects(camera)
+        hud = GameHUD(game)
+
+        // Apply saved settings
+        soundManager.masterVolume = gameData.masterVolume
+        soundManager.sfxVolume = gameData.sfxVolume
+        soundManager.musicVolume = gameData.musicVolume
+        soundManager.soundEnabled = gameData.soundEnabled
+        soundManager.musicEnabled = gameData.musicEnabled
+        screenEffects.setVibrationEnabled(gameData.vibrationEnabled)
 
         // Initialize physics
         physicsWorld = PhysicsWorld()
+        physicsWorld.soundManager = soundManager
+        physicsWorld.particleManager = particleManager
+        physicsWorld.screenEffects = screenEffects
 
         // Create game objects
         gameBounds = GameBounds(physicsWorld.world)
@@ -52,6 +82,14 @@ class GameScreen(private val game: CoinPusherGame) : Screen, GestureListener {
 
         // Setup input
         Gdx.input.inputProcessor = GestureDetector(this)
+        Gdx.input.setCatchKey(Input.Keys.BACK, true)
+
+        // Start session
+        sessionStartTime = System.currentTimeMillis()
+        gameData.gamesPlayed++
+
+        // Set HUD high score
+        hud.setHighScore(gameData.highScore)
 
         Gdx.app.log("GameScreen", "Initialized - Ready to play!")
     }
@@ -59,8 +97,15 @@ class GameScreen(private val game: CoinPusherGame) : Screen, GestureListener {
     override fun show() {}
 
     override fun render(delta: Float) {
-        // Update
-        update(delta)
+        // Handle back button
+        if (Gdx.input.isKeyJustPressed(Input.Keys.BACK)) {
+            returnToMenu()
+            return
+        }
+
+        // Update with time scale from screen effects
+        val scaledDelta = delta * screenEffects.getTimeScale()
+        update(scaledDelta)
 
         // Clear screen
         Gdx.gl.glClearColor(0.1f, 0.15f, 0.2f, 1f)
@@ -72,34 +117,72 @@ class GameScreen(private val game: CoinPusherGame) : Screen, GestureListener {
         // Render game
         renderGame()
 
+        // Render particles
+        renderParticles()
+
         // Render UI
         renderUI()
+
+        // Render flash effect
+        renderFlash()
     }
 
     private fun update(delta: Float) {
+        // Update systems
+        screenEffects.update(delta)
+        particleManager.update(delta)
+
         // Update physics
         physicsWorld.update(delta)
 
         // Update platform
         platform.update(delta)
 
-        // Auto-spawn coins for testing (optional)
-        lastCoinSpawn += delta
-        if (lastCoinSpawn >= coinSpawnDelay && coinCount > 0) {
-            // Uncomment for auto-spawn:
-            // spawnCoin(3.6f)
-            // lastCoinSpawn = 0f
+        // Collect coins and update score
+        val collectedCoins = mutableListOf<Coin>()
+        for (coin in coinPool.getActiveCoins()) {
+            if (coin.collected) {
+                collectedCoins.add(coin)
+                score += coin.getValue()
+                lastCollectedValue = coin.getValue()
+
+                // Effects for collection
+                val pos = coin.getPosition()
+                if (pos != null) {
+                    particleManager.createCollectionEffect(pos.x * CoinPusherGame.PPM, pos.y * CoinPusherGame.PPM, coin.color)
+                    soundManager.playCoinCollect()
+
+                    if (coin.getValue() >= 50) {
+                        // Big win effects
+                        screenEffects.shake(0.8f, 0.5f)
+                        screenEffects.flash(0.5f, 0.3f)
+                        screenEffects.vibrate(100)
+                        soundManager.playBigWin()
+                    } else {
+                        screenEffects.shake(0.2f, 0.15f)
+                        screenEffects.vibrate(30)
+                    }
+                }
+            }
         }
 
-        // Collect coins and update score
-        val collectedCount = coinPool.freeCollectedCoins()
-        if (collectedCount > 0) {
-            score += collectedCount
-            Gdx.app.log("GameScreen", "Collected $collectedCount coins! Score: $score")
+        // Free collected coins
+        for (coin in collectedCoins) {
+            coinPool.free(coin)
+            gameData.addCoins(1)
+        }
+
+        // Update high score
+        if (score > 0) {
+            gameData.updateHighScore(score)
         }
 
         // Remove coins that fell off screen
         coinPool.freeOutOfBoundsCoins(-1f)
+
+        // Update HUD
+        hud.update(score, gameData.coins, coinPool.getActiveCoinCount(),
+                   particleManager.getActiveParticleCount(), Gdx.graphics.framesPerSecond)
     }
 
     private fun renderGame() {
@@ -120,25 +203,33 @@ class GameScreen(private val game: CoinPusherGame) : Screen, GestureListener {
         game.shapeRenderer.end()
     }
 
+    private fun renderParticles() {
+        game.shapeRenderer.projectionMatrix = camera.combined
+        game.shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
+        particleManager.render(game.shapeRenderer)
+        game.shapeRenderer.end()
+    }
+
     private fun renderUI() {
-        game.batch.projectionMatrix = camera.combined
-        game.batch.begin()
+        hud.render(game.batch, game.shapeRenderer)
+    }
 
-        // Display score
-        game.font.color = Color.WHITE
-        game.font.draw(game.batch, "Score: $score", 20f, CoinPusherGame.GAME_HEIGHT - 20f)
-        game.font.draw(game.batch, "Coins: $coinCount", 20f, CoinPusherGame.GAME_HEIGHT - 50f)
-        game.font.draw(game.batch, "Active: ${coinPool.getActiveCoinCount()}", 20f, CoinPusherGame.GAME_HEIGHT - 80f)
-        game.font.draw(game.batch, "FPS: ${Gdx.graphics.framesPerSecond}", 20f, CoinPusherGame.GAME_HEIGHT - 110f)
-
-        // Instructions
-        game.font.draw(game.batch, "Tap to drop coins!", CoinPusherGame.GAME_WIDTH / 2 - 80f, 100f)
-
-        game.batch.end()
+    private fun renderFlash() {
+        val flashAlpha = screenEffects.getFlashAlpha()
+        if (flashAlpha > 0f) {
+            game.shapeRenderer.projectionMatrix = camera.combined
+            game.shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
+            game.shapeRenderer.color = Color(1f, 1f, 1f, flashAlpha)
+            game.shapeRenderer.rect(0f, 0f, CoinPusherGame.GAME_WIDTH, CoinPusherGame.GAME_HEIGHT)
+            game.shapeRenderer.end()
+        }
     }
 
     private fun spawnCoin(x: Float) {
-        if (coinCount <= 0) return
+        if (gameData.coins <= 0) {
+            Gdx.app.log("GameScreen", "No coins left!")
+            return
+        }
 
         val worldX = x / CoinPusherGame.PPM
         val worldY = 11f // Spawn near top
@@ -154,11 +245,28 @@ class GameScreen(private val game: CoinPusherGame) : Screen, GestureListener {
 
         val coin = coinPool.obtain(worldX, worldY, type)
         if (coin != null) {
-            coinCount--
+            gameData.spendCoins(1)
+
+            // Effects for dropping
+            soundManager.playCoinDrop()
+            particleManager.createCoinDropEffect(x, worldY * CoinPusherGame.PPM, type.color)
+            screenEffects.shake(0.1f, 0.1f)
+            screenEffects.vibrate(20)
+
             Gdx.app.log("GameScreen", "Spawned ${type.name} coin at $worldX, $worldY")
         } else {
             Gdx.app.log("GameScreen", "Failed to spawn coin - pool limit reached")
         }
+    }
+
+    private fun returnToMenu() {
+        // Save session time
+        val sessionTime = (System.currentTimeMillis() - sessionStartTime) / 1000
+        gameData.totalPlayTime += sessionTime
+
+        Gdx.app.log("GameScreen", "Returning to menu. Final score: $score")
+        game.setScreen(MenuScreen(game))
+        dispose()
     }
 
     // Gesture handling
@@ -194,5 +302,9 @@ class GameScreen(private val game: CoinPusherGame) : Screen, GestureListener {
         coinPool.dispose()
         platform.dispose()
         gameBounds.dispose()
+        soundManager.dispose()
+        particleManager.dispose()
+        hud.dispose()
+        Gdx.app.log("GameScreen", "Screen disposed")
     }
 }

@@ -1,13 +1,15 @@
 package com.coinpusher.game.physics
 
+import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.physics.box2d.*
+import com.coinpusher.game.CoinPusherGame
 import com.coinpusher.game.entities.Coin
 
 /**
  * Handles collision events between physics bodies
  * Manages coin-to-coin, coin-to-platform, and coin-to-wall collisions
  */
-class CollisionListener : ContactListener {
+class CollisionListener(private val physicsWorld: PhysicsWorld) : ContactListener {
 
     override fun beginContact(contact: Contact) {
         val bodyA = contact.fixtureA.body
@@ -44,8 +46,19 @@ class CollisionListener : ContactListener {
         // Handle post-collision effects (sound, particles)
         val impulseValue = impulse.normalImpulses[0]
         if (impulseValue > 0.5f) {
-            // Trigger sound effect for significant collisions
-            // TODO: Add sound system
+            // Play collision sound for significant impacts
+            physicsWorld.soundManager?.playCoinCollision(impulseValue / 10f)
+
+            // Create particle effects at collision point
+            val worldManifold = contact.worldManifold
+            if (worldManifold.numberOfContactPoints > 0) {
+                val point = worldManifold.points[0]
+                physicsWorld.particleManager?.createCoinDropEffect(
+                    point.x * CoinPusherGame.PPM,
+                    point.y * CoinPusherGame.PPM,
+                    Color.GOLD
+                )
+            }
         }
     }
 

@@ -2,7 +2,9 @@ package com.coinpusher.game.physics
 
 import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.physics.box2d.World
-import com.coinpusher.game.CoinPusherGame
+import com.coinpusher.game.audio.SoundManager
+import com.coinpusher.game.effects.ParticleManager
+import com.coinpusher.game.effects.ScreenEffects
 
 /**
  * Manages the Box2D physics world
@@ -15,6 +17,11 @@ class PhysicsWorld {
     private val velocityIterations = 8
     private val positionIterations = 3
 
+    // Optional systems for effects
+    var soundManager: SoundManager? = null
+    var particleManager: ParticleManager? = null
+    var screenEffects: ScreenEffects? = null
+
     companion object {
         // 10% of Earth's gravity for realistic coin stacking (based on research)
         const val GRAVITY = -0.981f
@@ -26,7 +33,7 @@ class PhysicsWorld {
     }
 
     private fun setupContactListener() {
-        world.setContactListener(CollisionListener())
+        world.setContactListener(CollisionListener(this))
     }
 
     fun update(delta: Float) {

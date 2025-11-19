@@ -5,7 +5,7 @@ import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
-import com.coinpusher.game.screens.GameScreen
+import com.coinpusher.game.screens.MenuScreen
 
 /**
  * Main game class for Coin Pusher
@@ -21,6 +21,7 @@ class CoinPusherGame : Game() {
         const val GAME_WIDTH = 720f
         const val GAME_HEIGHT = 1280f
         const val PPM = 100f // Pixels per meter for Box2D
+        const val VERSION = "1.0.0"
     }
 
     override fun create() {
@@ -28,10 +29,10 @@ class CoinPusherGame : Game() {
         shapeRenderer = ShapeRenderer()
         font = BitmapFont()
 
-        Gdx.app.log("CoinPusher", "Game initialized")
+        Gdx.app.log("CoinPusher", "Game initialized - v$VERSION")
 
-        // Start with the main game screen
-        setScreen(GameScreen(this))
+        // Start with the menu screen
+        setScreen(MenuScreen(this))
     }
 
     override fun dispose() {
@@ -39,5 +40,6 @@ class CoinPusherGame : Game() {
         shapeRenderer.dispose()
         font.dispose()
         screen?.dispose()
+        Gdx.app.log("CoinPusher", "Game disposed")
     }
 }
