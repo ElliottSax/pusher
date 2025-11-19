@@ -13,6 +13,8 @@ An impressive Android coin pusher game with realistic physics, stunning visuals,
 ### 🎨 Impressive Visuals
 - **Particle Effects System** - Sparkles, explosions, and ambient dust
 - **Color-Coded Coins** - Gold, Silver, Bronze, and Special coins
+- **Texture Support** - Optional PNG textures for enhanced coin graphics
+- **Adaptive App Icon** - Professional icon for Android 8.0+
 - **Smooth Animations** - 60 FPS target on mobile devices
 - **Visual Polish** - Platform movement, coin highlights, collection effects
 
@@ -28,6 +30,20 @@ An impressive Android coin pusher game with realistic physics, stunning visuals,
 - **Coin Collection** - Collect coins that fall off the edge
 - **Multiple Coin Types** - Different values and rarities
 - **Score System** - Track your collected coins
+
+### 🔊 Audio System
+- **Sound Manager** - Graceful loading of OGG/WAV sound files
+- **Collision Sounds** - Realistic coin impact audio
+- **Collection Sounds** - Rewarding feedback effects
+- **Volume Controls** - Master, SFX, and Music sliders
+- **Fallback Support** - Game works without audio files
+
+### 💰 Monetization Ready
+- **AdMob Framework** - Full Google AdMob integration ready
+- **Banner Ads** - Non-intrusive bottom banners
+- **Interstitial Ads** - Between-game full-screen ads
+- **Rewarded Videos** - Watch ads for free coins
+- **Easy Setup** - See ADMOB_SETUP.md for activation
 
 ## 🏗️ Technology Stack
 
@@ -114,6 +130,36 @@ pusher/
 ```
 
 APK will be generated in: `android/build/outputs/apk/`
+
+## 🎨 Optional Enhancements
+
+The game is fully playable as-is, but you can enhance it further:
+
+### Add Sound Effects
+1. See `android/src/main/assets/sounds/README.md` for requirements
+2. Add 4 OGG/WAV files: coin_drop, coin_collect, coin_collision, big_win
+3. SoundManager will automatically load and use them
+4. **Game works without sounds** - graceful fallback
+
+### Add Coin Textures
+1. See `android/src/main/assets/textures/README.md` for specifications
+2. Create 4 PNG files (128x128): coin_gold, coin_silver, coin_bronze, coin_special
+3. TextureManager will automatically load and render them
+4. **Game works without textures** - uses shape rendering
+
+### Customize App Icon
+1. See `android/src/main/res/APP_ICON_GUIDE.md` for instructions
+2. Adaptive icon already created (Android 8.0+) with gold coin design
+3. Optionally add traditional PNG icons for older Android versions
+4. Use Android Studio's Image Asset tool for easy generation
+
+### Enable Monetization
+1. See `ADMOB_SETUP.md` for complete guide
+2. Framework is ready - just needs AdMob account setup
+3. Uncomment code in `AndroidAdManager.kt` after adding dependency
+4. Earn revenue from banner, interstitial, and rewarded video ads
+
+All enhancements are **optional** - the game is production-ready without them!
 
 ## 🎮 How to Play
 

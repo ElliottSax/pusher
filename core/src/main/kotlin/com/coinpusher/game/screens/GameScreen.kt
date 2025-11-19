@@ -19,6 +19,7 @@ import com.coinpusher.game.effects.ScreenEffects
 import com.coinpusher.game.entities.Coin
 import com.coinpusher.game.entities.GameBounds
 import com.coinpusher.game.entities.Platform
+import com.coinpusher.game.graphics.TextureManager
 import com.coinpusher.game.physics.PhysicsWorld
 import com.coinpusher.game.systems.CoinPool
 import com.coinpusher.game.ui.GameHUD
@@ -39,6 +40,7 @@ class GameScreen(private val game: CoinPusherGame) : Screen, GestureListener {
     private val soundManager: SoundManager
     private val particleManager: ParticleManager
     private val screenEffects: ScreenEffects
+    private val textureManager: TextureManager
     private val hud: GameHUD
     private val gameData: GameData
 
@@ -59,6 +61,7 @@ class GameScreen(private val game: CoinPusherGame) : Screen, GestureListener {
         soundManager = SoundManager()
         particleManager = ParticleManager()
         screenEffects = ScreenEffects(camera)
+        textureManager = TextureManager()
         hud = GameHUD(game)
 
         // Apply saved settings
@@ -195,12 +198,24 @@ class GameScreen(private val game: CoinPusherGame) : Screen, GestureListener {
         // Render platform
         platform.render(game.shapeRenderer, CoinPusherGame.PPM)
 
-        // Render coins
-        for (coin in coinPool.getActiveCoins()) {
-            coin.render(game.shapeRenderer, CoinPusherGame.PPM)
-        }
-
         game.shapeRenderer.end()
+
+        // Render coins with textures if available, otherwise shapes
+        if (textureManager.hasTextures) {
+            game.batch.projectionMatrix = camera.combined
+            game.batch.begin()
+            for (coin in coinPool.getActiveCoins()) {
+                coin.renderTextured(game.batch, textureManager, CoinPusherGame.PPM)
+            }
+            game.batch.end()
+        } else {
+            // Fallback to shape rendering
+            game.shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
+            for (coin in coinPool.getActiveCoins()) {
+                coin.render(game.shapeRenderer, CoinPusherGame.PPM)
+            }
+            game.shapeRenderer.end()
+        }
     }
 
     private fun renderParticles() {
@@ -304,6 +319,7 @@ class GameScreen(private val game: CoinPusherGame) : Screen, GestureListener {
         gameBounds.dispose()
         soundManager.dispose()
         particleManager.dispose()
+        textureManager.dispose()
         hud.dispose()
         Gdx.app.log("GameScreen", "Screen disposed")
     }

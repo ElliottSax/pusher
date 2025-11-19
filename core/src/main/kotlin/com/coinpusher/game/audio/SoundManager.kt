@@ -55,18 +55,64 @@ class SoundManager : Disposable {
     private val soundCooldown = 0.05f // 50ms between sounds
 
     init {
-        // For now, we'll use programmatically generated sounds
-        // In production, load from assets folder
-        generateSounds()
+        loadSounds()
         Gdx.app.log("SoundManager", "Sound system initialized")
     }
 
-    private fun generateSounds() {
-        // Note: libGDX doesn't support procedural sound generation easily
-        // These would normally be loaded from assets:
-        // coinDropSound = Gdx.audio.newSound(Gdx.files.internal("sounds/coin_drop.wav"))
-        // For now, we'll use a fallback system without actual sounds
-        Gdx.app.log("SoundManager", "Sound generation placeholder - add WAV files to assets/sounds/")
+    private fun loadSounds() {
+        // Try to load sound files, gracefully handle missing files
+        try {
+            if (Gdx.files.internal("sounds/coin_drop.ogg").exists()) {
+                coinDropSound = Gdx.audio.newSound(Gdx.files.internal("sounds/coin_drop.ogg"))
+                Gdx.app.log("SoundManager", "Loaded: coin_drop.ogg")
+            }
+        } catch (e: Exception) {
+            Gdx.app.error("SoundManager", "Failed to load coin_drop.ogg: ${e.message}")
+        }
+
+        try {
+            if (Gdx.files.internal("sounds/coin_collect.ogg").exists()) {
+                coinCollectSound = Gdx.audio.newSound(Gdx.files.internal("sounds/coin_collect.ogg"))
+                Gdx.app.log("SoundManager", "Loaded: coin_collect.ogg")
+            }
+        } catch (e: Exception) {
+            Gdx.app.error("SoundManager", "Failed to load coin_collect.ogg: ${e.message}")
+        }
+
+        try {
+            if (Gdx.files.internal("sounds/coin_collision.ogg").exists()) {
+                collisionSound = Gdx.audio.newSound(Gdx.files.internal("sounds/coin_collision.ogg"))
+                Gdx.app.log("SoundManager", "Loaded: coin_collision.ogg")
+            }
+        } catch (e: Exception) {
+            Gdx.app.error("SoundManager", "Failed to load coin_collision.ogg: ${e.message}")
+        }
+
+        try {
+            if (Gdx.files.internal("sounds/big_win.ogg").exists()) {
+                platformSound = Gdx.audio.newSound(Gdx.files.internal("sounds/big_win.ogg"))
+                Gdx.app.log("SoundManager", "Loaded: big_win.ogg")
+            }
+        } catch (e: Exception) {
+            Gdx.app.error("SoundManager", "Failed to load big_win.ogg: ${e.message}")
+        }
+
+        try {
+            if (Gdx.files.internal("sounds/background_music.ogg").exists()) {
+                backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal("sounds/background_music.ogg"))
+                Gdx.app.log("SoundManager", "Loaded: background_music.ogg")
+            }
+        } catch (e: Exception) {
+            Gdx.app.error("SoundManager", "Failed to load background_music.ogg: ${e.message}")
+        }
+
+        // Log status
+        val loadedCount = listOf(coinDropSound, coinCollectSound, collisionSound, platformSound).count { it != null }
+        if (loadedCount == 0) {
+            Gdx.app.log("SoundManager", "No sound files found - running in silent mode. See assets/sounds/README.md")
+        } else {
+            Gdx.app.log("SoundManager", "Loaded $loadedCount/4 sound effects")
+        }
     }
 
     fun playCoinDrop() {
@@ -106,10 +152,15 @@ class SoundManager : Disposable {
 
     fun playBigWin() {
         if (!soundEnabled) return
-        // Play ascending notes for celebration
-        playBeep(800f, 0.1f, 0.5f)
-        playBeep(1000f, 0.1f, 0.5f)
-        playBeep(1200f, 0.2f, 0.7f)
+
+        // Use big_win sound if available, otherwise ascending beeps
+        platformSound?.play(masterVolume * sfxVolume * 0.8f, 1.0f, 0f)
+            ?: run {
+                // Fallback: Play ascending notes for celebration
+                playBeep(800f, 0.1f, 0.5f)
+                playBeep(1000f, 0.1f, 0.5f)
+                playBeep(1200f, 0.2f, 0.7f)
+            }
     }
 
     /**

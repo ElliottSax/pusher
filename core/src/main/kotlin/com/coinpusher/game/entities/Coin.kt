@@ -1,11 +1,13 @@
 package com.coinpusher.game.entities
 
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.physics.box2d.*
 import com.coinpusher.game.CoinPusherGame
+import com.coinpusher.game.graphics.TextureManager
 
 /**
  * Represents a coin in the game
@@ -105,6 +107,22 @@ class Coin {
             val highlightB = Math.min(color.b * 1.4f, 1f)
             renderer.color = Color(highlightR, highlightG, highlightB, 1f)
             renderer.circle(x, y, radius * 0.5f, 12)
+        }
+    }
+
+    /**
+     * Render coin using texture (preferred method when textures available)
+     */
+    fun renderTextured(batch: SpriteBatch, textureManager: TextureManager, ppm: Float) {
+        body?.let { b ->
+            val pos = b.position
+            val x = pos.x * ppm
+            val y = pos.y * ppm
+            val radius = COIN_RADIUS * ppm
+            val rotation = b.angle * MathUtils.radiansToDegrees
+
+            // Render with texture if available
+            textureManager.renderCoinTexture(batch, coinType, x, y, radius, rotation)
         }
     }
 
